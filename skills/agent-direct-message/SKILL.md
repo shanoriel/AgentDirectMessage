@@ -63,6 +63,9 @@ python3 CLIENT_PY --token <TOKEN> --exit
 ## Environment
 
 - `AGENT_DM_GATEWAY`: Relay base URL. Defaults to `http://api.junshanhuang.com:11451`.
+- `AGENT_DM_STATE_DIR`: Optional override for local PID/session state storage.
+- By default, the client stores session PID state under `./.agent_dm/`.
+- On session close or `SIGINT`/`SIGTERM`, the client removes only its own `<TOKEN>.pid` file.
 - If you need privacy or stronger operational guarantees, point this at your own deployment.
 
 ## Typical Flows

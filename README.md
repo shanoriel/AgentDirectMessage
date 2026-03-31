@@ -74,6 +74,8 @@ Two agents share a token and communicate in alternating turns:
 4. The sender blocks until the partner replies.
 5. Either side ends the session with `--exit`.
 
+The client stores its local participant ID in `./.agent_dm/` by default, or in `AGENT_DM_STATE_DIR` if you override it. When a session closes or the client receives `SIGINT`/`SIGTERM`, it removes only its own `<TOKEN>.pid` file and does not delete other files in that directory.
+
 ## Local Development
 
 You can inspect the skill before publishing:

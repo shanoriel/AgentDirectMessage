@@ -10,7 +10,7 @@
   # Exit: close the session
   python3 client.py --token X --exit
 
-Participant ID is managed automatically via /tmp/.agent_dm_{token}.pid
+Participant ID is managed automatically via a writable local state directory.
 """
 
 from __future__ import annotations
@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import signal
 import sys
 import time
 import urllib.error
@@ -35,30 +36,59 @@ def _normalize_gateway(value: str) -> str:
 
 
 GATEWAY = _normalize_gateway(os.getenv("AGENT_DM_GATEWAY", DEFAULT_GATEWAY))
+ACTIVE_PID_FILE: str | None = None
+
+
+def _state_dir() -> str:
+    configured = os.getenv("AGENT_DM_STATE_DIR")
+    if configured:
+        return os.path.expanduser(configured)
+    return os.path.abspath(".agent_dm")
 
 
 def _pid_file(token: str) -> str:
-    return f"/tmp/.agent_dm_{token}.pid"
+    directory = _state_dir()
+    os.makedirs(directory, exist_ok=True)
+    return os.path.join(directory, f"{token}.pid")
 
 
-def _save_pid(token: str, pid: str) -> None:
-    with open(_pid_file(token), "w") as f:
-        f.write(pid)
-
-
-def _load_pid(token: str) -> str:
+def _save_pid(token: str, pid: str) -> str:
     path = _pid_file(token)
-    if not os.path.exists(path):
-        print(f"No session found for token '{token}'. Run --check first.", file=sys.stderr)
-        sys.exit(2)
-    with open(path) as f:
-        return f.read().strip()
+    with open(path, "w") as f:
+        f.write(pid)
+    return path
 
 
-def _clear_pid(token: str) -> None:
+def _load_pid(token: str) -> tuple[str, str]:
     path = _pid_file(token)
     if os.path.exists(path):
+        with open(path) as f:
+            return f.read().strip(), path
+    print(f"No session found for token '{token}'. Run --check first.", file=sys.stderr)
+    sys.exit(2)
+
+
+def _clear_pid_file(path: str | None) -> None:
+    if path and os.path.exists(path):
         os.remove(path)
+
+
+def _install_signal_cleanup(pid_path: str) -> None:
+    global ACTIVE_PID_FILE
+    ACTIVE_PID_FILE = pid_path
+
+    def _handle_signal(signum: int, _frame: object) -> None:
+        _clear_pid_file(ACTIVE_PID_FILE)
+        sys.exit(128 + signum)
+
+    signal.signal(signal.SIGINT, _handle_signal)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, _handle_signal)
+
+
+def _disable_signal_cleanup() -> None:
+    global ACTIVE_PID_FILE
+    ACTIVE_PID_FILE = None
 
 
 def _request(method: str, path: str, data: dict | None = None, headers: dict | None = None) -> dict:
@@ -86,7 +116,7 @@ def _pid_header(pid: str) -> dict:
     return {"X-Participant-Id": pid}
 
 
-def _wait_for_reply(pid: str) -> None:
+def _wait_for_reply(pid: str, pid_path: str) -> None:
     for i in range(MAX_WAIT_ITERATIONS):
         try:
             resp = _request("GET", "/wait", headers=_pid_header(pid))
@@ -100,16 +130,21 @@ def _wait_for_reply(pid: str) -> None:
         st = resp["status"]
         if st == "message":
             print(json.dumps({"message": resp["message"], "from": resp["from"]}, ensure_ascii=False))
+            _disable_signal_cleanup()
             return
         if st == "closed":
+            _clear_pid_file(pid_path)
+            _disable_signal_cleanup()
             print("[closed] session ended by partner", file=sys.stderr)
             sys.exit(1)
         if st == "timeout":
             continue
 
+        _disable_signal_cleanup()
         print(f"[wait] unexpected status: {st}", file=sys.stderr)
         sys.exit(2)
 
+    _disable_signal_cleanup()
     print("[timeout] gave up waiting after too many iterations", file=sys.stderr)
     sys.exit(2)
 
@@ -123,9 +158,9 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.exit:
-        pid = _load_pid(args.token)
+        pid, pid_path = _load_pid(args.token)
         _request("POST", "/exit", headers=_pid_header(pid))
-        _clear_pid(args.token)
+        _clear_pid_file(pid_path)
         print("[exit] closed", file=sys.stderr)
         return
 
@@ -142,10 +177,11 @@ def main() -> None:
         print("--message is required when not using --check or --exit", file=sys.stderr)
         sys.exit(2)
 
-    pid = _load_pid(args.token)
+    pid, pid_path = _load_pid(args.token)
+    _install_signal_cleanup(pid_path)
     _request("POST", "/send", {"message": args.message}, headers=_pid_header(pid))
     print("[sent] waiting for reply...", file=sys.stderr)
-    _wait_for_reply(pid)
+    _wait_for_reply(pid, pid_path)
 
 
 if __name__ == "__main__":
