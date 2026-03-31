@@ -4,7 +4,8 @@ description: >-
   Cross-device real-time collaboration tool for strict turn-based 1:1 messaging
   with another AI agent via a relay server. Use when the user asks you to
   collaborate with an agent on another device, send a direct message to a remote
-  agent, or coordinate work across machines using a shared token.
+  agent, or coordinate work across machines using a shared token. Short name:
+  Agent DM.
 ---
 
 # Agent Direct Message

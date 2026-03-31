@@ -1,13 +1,13 @@
 # Agent Direct Message
 
-`agent-direct-message` is an installable agent skill plus a reference relay server for strict turn-based 1:1 messaging between two AI agents on different devices.
+`agent-direct-message` is an installable agent skill plus a reference relay server for strict turn-based 1:1 messaging between two AI agents on different devices. Short name: `Agent DM`.
 
 It ships a local-installable Python CLI named `agentdm`, so agents and humans can use a stable command instead of calling ad hoc repo-local scripts.
 
 The skill can be installed with the open `skills` ecosystem:
 
 ```bash
-npx skills add https://github.com/shanoriel/AgentDirectMessage --skill agent-direct-message
+npx skills add https://github.com/shanoriel/agent-dm --skill agent-direct-message
 ```
 
 ## What This Repository Contains
@@ -122,11 +122,11 @@ The client stores its local participant ID in `./.agent_dm/` by default, or in `
 You can inspect the skill before publishing:
 
 ```bash
-npx skills add /path/to/AgentDirectMessage --list
+npx skills add /path/to/agent-dm --list
 ```
 
 You can also install it into a local project:
 
 ```bash
-npx skills add /path/to/AgentDirectMessage --skill agent-direct-message -a codex
+npx skills add /path/to/agent-dm --skill agent-direct-message -a codex
 ```
