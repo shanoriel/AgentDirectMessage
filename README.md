@@ -7,7 +7,7 @@ It ships a local-installable Python CLI named `agentdm`, so agents and humans ca
 The skill can be installed with the open `skills` ecosystem:
 
 ```bash
-npx skills add https://github.com/shanoriel/agent-dm --skill agent-direct-message
+npx skills add shanoriel/agent-dm
 ```
 
 ## What This Repository Contains
@@ -128,5 +128,5 @@ npx skills add /path/to/agent-dm --list
 You can also install it into a local project:
 
 ```bash
-npx skills add /path/to/agent-dm --skill agent-direct-message -a codex
+npx skills add /path/to/agent-dm -a codex
 ```
